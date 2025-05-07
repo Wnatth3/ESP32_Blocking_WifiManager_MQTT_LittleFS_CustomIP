@@ -19,10 +19,9 @@
 #define _deln(...)        Serial.println(__VA_ARGS__)
 #define _deF(...)         Serial.print(F(__VA_ARGS__))
 #define _delnF(...)       Serial.println(F(__VA_ARGS__))  // printing text using the F macro
-#define _deVar(...)                      \
-    Serial.print(F(#__VA_ARGS__ " = ")); \
-    Serial.print(__VA_ARGS__);           \
-    Serial.print(F(" "))
+#define _deVar(label, value) \
+    Serial.print(F(label));  \
+    Serial.print(value)
 #define _deVarln(...)    \
     _deVar(__VA_ARGS__); \
     Serial.println()
@@ -89,9 +88,7 @@ void loadConfiguration(fs::FS& fs, const char* filename) {
     // Open file for reading
     File file = fs.open(filename, "r");
     if (!file) {
-#ifdef _DEBUG_
-        Serial.println(F("Failed to open data file"));
-#endif
+        _delnF("Failed to open data file");
         return;
     }
 
@@ -100,9 +97,7 @@ void loadConfiguration(fs::FS& fs, const char* filename) {
     // Deserialize the JSON document
     DeserializationError error = deserializeJson(doc, file);
     if (error) {
-#ifdef _DEBUG_
-        Serial.println(F("Failed to read file, using default configuration"));
-#endif
+        _delnF("Failed to read file, using default configuration");
     }
     // Copy values from the JsonDocument to the Config
     // strlcpy(Destination_Variable, doc["Source_Variable"] /*| "Default_Value"*/, sizeof(Destination_Name));
@@ -118,9 +113,7 @@ void loadConfiguration(fs::FS& fs, const char* filename) {
         strlcpy(static_sn, doc["subnet"], sizeof(static_sn));
         strlcpy(static_dns, doc["dns"], sizeof(static_dns));
     } else {
-#ifdef _DEBUG_
-        Serial.println(F("No custom IP in config file"));
-#endif
+        _delnF("No custom IP in config file");
     }
 
     file.close();
@@ -142,25 +135,25 @@ void loadConfiguration(fs::FS& fs, const char* filename) {
 // }
 
 // void mqttInit() {
-// #ifdef _DEBUG_
-//     Serial.print(F("MQTT parameters are "));
-// #endif
+//
+//     _deF("MQTT parameters are "));
+//
 //     if (mqttParameter) {
-// #ifdef _DEBUG_
-//         Serial.println(F(" available"));
-// #endif
+//
+//         _delnF(" available"));
+//
 //         mqtt.setCallback(handleMqttMessage);
 //         mqtt.setServer(mqttBroker, atoi(mqttPort));
 //         tConnectMqtt.start();
 //     } else {
-// #ifdef _DEBUG_
-//         Serial.println(F(" not available."));
-// #endif
+//
+//         _delnF(" not available."));
+//
 //     }
 // }
 
 void saveConfigCallback() {
-    Serial.println("Should save config");
+    _delnF("Should save config");
     shouldSaveConfig = true;
 }
 
@@ -169,44 +162,34 @@ void printFile(fs::FS& fs, const char* filename) {
     // Open file for reading
     File file = fs.open(filename, "r");
     if (!file) {
-#ifdef _DEBUG_
-        Serial.println(F("Failed to open data file"));
-#endif
+        _delnF("Failed to open data file");
         return;
     }
 
     // Extract each characters by one by one
     while (file.available()) {
-#ifdef _DEBUG_
-        Serial.print((char)file.read());
-#endif
+        _de((char)file.read());
     }
-    Serial.println();
+    _deln();
 
     file.close();  // Close the file
 }
 
 void deleteFile(fs::FS& fs, const char* path) {
-#ifdef _DEBUG_
-    Serial.print(F("Deleting file: "));
-    Serial.println(String(path) + "\r\n");
-#endif
+    // _deF("Deleting file: ");
+    // _deln(String(path) + "\r\n");
+    _deVarln("Deleating file: ", path);
+
     if (fs.remove(path)) {
-#ifdef _DEBUG_
-        Serial.println(F("- file deleted"));
-#endif
+        _delnF("- file deleted");
     } else {
-#ifdef _DEBUG_
-        Serial.println(F("- delete failed"));
-#endif
+        _delnF("- delete failed");
     }
 }
 
 //----------------- Wifi Manager --------------//
 void wifiManagerSetup() {
-#ifdef _DEBUG_
-    Serial.println(F("Loading configuration..."));
-#endif
+    _delnF("Loading configuration...");
     loadConfiguration(LittleFS, filename);
 
     // set static ip
@@ -226,54 +209,41 @@ void wifiManagerSetup() {
     wifiManager.setDarkMode(true);
     // wifiManager.setConfigPortalTimeout(60);
     // wifiManager.setConfigPortalBlocking(false);
-#ifdef _DEBUG_
-    Serial.println(F("Saving configuration..."));
-#endif
+
+    _delnF("Saving configuration...");
+
     wifiManager.setSaveParamsCallback(saveConfigCallback);
-#ifdef _DEBUG_
-    Serial.println(F("Print config file..."));
-#endif
+
+    _delnF("Print config file...");
+
     printFile(LittleFS, filename);
 
     if (wifiManager.autoConnect(deviceName, "password")) {
-#ifdef _DEBUG_
-        Serial.println(F("WiFI is connected :D"));
-#endif
-
+        _delnF("WiFI is connected :D");
     } else {
-#ifdef _DEBUG_
-        Serial.println(F("Configportal running"));
-#endif
+        _delnF("Configportal running");
     }
 
     if (shouldSaveConfig) {
-        Serial.println(F("at saveParamsCallback()"));
+        _delnF("at saveParamsCallback()");
         // saveConfiguration(LittleFS, filename);
         strcpy(mqttBroker, customMqttBroker.getValue());
         strcpy(mqttPort, customMqttPort.getValue());
         strcpy(mqttUser, customMqttUser.getValue());
         strcpy(mqttPass, customMqttPass.getValue());
 
-        // Serial.print(F("ip: "));
-        // Serial.print(WiFi.localIP().toString());
-        // Serial.print(F(" | gw: "));
-        // Serial.print(WiFi.gatewayIP().toString());
-        // Serial.print(F(" | sn: "));
-        // Serial.print(WiFi.subnetMask().toString());
-        // Serial.print(F(" | dns: "));
-        // Serial.println(WiFi.dnsIP().toString());
+        // _deVar("ip: ", WiFi.localIP());
+        // _deVar(" | gw: ", WiFi.gatewayIP());
+        // _deVar(" | sn: ", WiFi.subnetMask());
+        // _deVarln(" | dns: ", WiFi.dnsIP());
 
-#ifdef _DEBUG_
-        Serial.println(F("The values are updated."));
-#endif
+        _delnF("The values are updated.");
 
         // Delete existing file, otherwise the configuration is appended to the file
         // LittleFS.remove(filename);
         File file = LittleFS.open(filename, "w");
         if (!file) {
-#ifdef _DEBUG_
-            Serial.println(F("Failed to open config file for writing"));
-#endif
+            _delnF("Failed to open config file for writing");
             return;
         }
 
@@ -295,25 +265,17 @@ void wifiManagerSetup() {
             mqttParameter        = doc["mqttParameter"];
         }
 
-        // Serial.print(F("ip: "));
-        // Serial.print(WiFi.localIP());
-        // Serial.print(F(" | gw: "));
-        // Serial.print(WiFi.gatewayIP());
-        // Serial.print(F(" | sn: "));
-        // Serial.print(WiFi.subnetMask());
-        // Serial.print(F(" | dns: "));
-        // Serial.println(WiFi.dnsIP());
+        // _deVar("ip: ", WiFi.localIP());
+        // _deVar(" | gw: ", WiFi.gatewayIP());
+        // _deVar(" | sn: ", WiFi.subnetMask());
+        // _deVarln(" | dns: ", WiFi.dnsIP());
 
         // Serialize JSON to file
         if (serializeJson(doc, file) == 0) {
-#ifdef _DEBUG_
-            Serial.println(F("Failed to write to file"));
-#endif
+            _delnF("Failed to write to file");
         } else {
-#ifdef _DEBUG_
-            Serial.print(F("The configuration has been saved to "));
-            Serial.println(filename);
-#endif
+            _deF("The configuration has been saved to ");
+            _deln(filename);
         }
 
         file.close();  // Close the file
@@ -323,42 +285,34 @@ void wifiManagerSetup() {
 }
 
 void subscribeMqtt() {
-#ifdef _DEBUG_
-    Serial.println(F("Subscribing to the MQTT topics..."));
-#endif
+    _delnF("Subscribing to the MQTT topics...");
+
     // mqtt.subscribe("test/subscribe/topic");
 }
 
 void publishMqtt() {
-#ifdef _DEBUG_
-    Serial.println(F("Publishing to the MQTT topics..."));
-#endif
+    _delnF("Publishing to the MQTT topics...");
+
     // mqtt.publish("test/publish/topic", "Hello World!");
 }
 
 //----------------- Connect MQTT --------------//
 // void reconnectMqtt() {
-//     if (WiFi.status() == WL_CONNECTED) {
-// #ifdef _DEBUG_
-//         Serial.print(F("Connecting MQTT... "));
-// #endif
+//     if (WiFi.status() == WL_CONNECTED) {//
+//         _deF("Connecting MQTT... "));
+//
 //         if (mqtt.connect(deviceName, mqttUser, mqttPass)) {
-//             tReconnectMqtt.stop();
-// #ifdef _DEBUG_
-//             Serial.println(F("Connected"));
-// #endif
+//             tReconnectMqtt.stop();//
+//             _delnF("Connected"));//
 //             tConnectMqtt.interval(0);
 //             tConnectMqtt.start();
 //             statusLed.blinkNumberOfTimes(200, 200, 3);  // 250ms ON, 750ms OFF, repeat 3 times, blink immediately
 //             subscribeMqtt();
 //             publishMqtt();
-//         } else {
-// #ifdef _DEBUG_
-//             Serial.print(F("failed state: "));
-//             Serial.println(mqtt.state());
-//             Serial.print(F("counter: "));
-//             Serial.println(tReconnectMqtt.counter());
-// #endif
+//         } else {//
+// _deVar("failed state: ", mqtt.state());
+//             _deVarln(" | counter: ", tReconnectMqtt.counter());
+//
 //             if (tReconnectMqtt.counter() >= 3) {
 //                 tReconnectMqtt.stop();
 //                 tConnectMqtt.interval(60 * 1000);  // Wait 1 minute before reconnecting.
@@ -366,10 +320,8 @@ void publishMqtt() {
 //             }
 //         }
 //     } else {
-//         if (tReconnectMqtt.counter() <= 1) {
-// #ifdef _DEBUG_
-//             Serial.println(F("WiFi is not connected"));
-// #endif
+//         if (tReconnectMqtt.counter() <= 1) {//
+//             _delnF("WiFi is not connected"));//
 //         }
 //     }
 // }
@@ -385,16 +337,13 @@ void publishMqtt() {
 
 //----------------- Reset WiFi Button ---------//
 // void resetWifiBtPressed(Button2& btn) {
-//     statusLed.turnON();
-// #ifdef _DEBUG_
-//     Serial.println(F("Deleting the config file and resetting WiFi."));
-// #endif
+//     statusLed.turnON();//
+//     _delnF("Deleting the config file and resetting WiFi."));//
 //     deleteFile(LittleFS, filename);
 //     wifiManager.resetSettings();
-//     Serial.print(deviceName);
-// #ifdef _DEBUG_
-//     Serial.println(F(" is restarting."));
-// #endif
+//     _de(deviceName);//
+//     _delnF(" is restarting."));
+//
 //     ESP.restart();
 //     delay(3000);
 // }
@@ -402,22 +351,18 @@ void publishMqtt() {
 //********************************  Setup ***********************************//
 void setup() {
     _serialBegin(115200);  // initialize serial communication at 115200 baud rate
-
     // statusLed.turnOFF();
     // resetWifiBt.begin(resetWifiBtPin);
     // resetWifiBt.setLongClickTime(5000);
     // resetWifiBt.setLongClickDetectedHandler(resetWifiBtPressed);
-    // // while (!Serial)
-    //     continue;
-    // Initialize LittleFS library
     while (!LittleFS.begin(FORMAT_LITTLEFS_IF_FAILED)) {
-#ifdef _DEBUG_
-        Serial.println(F("Failed to initialize LittleFS library"));
-#endif
+        _delnF("Failed to initialize LittleFS library");
+
         delay(1000);
     }
 
     wifiManagerSetup();
+
     // mqttInit();
     statusLed.blinkNumberOfTimes(200, 300, 3);  // 250ms ON, 750ms OFF, repeat 3 times, blink immediately
 }
