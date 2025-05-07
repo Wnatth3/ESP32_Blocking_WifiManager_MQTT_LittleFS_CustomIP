@@ -13,7 +13,7 @@ Issue: The status LED is not blinking when comment #define _DEBUG_ line.
 #include <ezLED.h>
 // #include <TickTwo.h>
 
-// #define _DEBUG_
+#define _DEBUG_
 #include "Debug.h"  // Debug library
 
 //******************************** Configulation ****************************//
