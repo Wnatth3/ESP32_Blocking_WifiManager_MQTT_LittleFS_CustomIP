@@ -1,7 +1,7 @@
 /*
 Importance: the printFile() may be couseing the statusLed not working when commend #define _DEBUG_.
 */
-
+#include <Arduino.h>
 #include <FS.h>           //this needs to be first, or it all crashes and burns...
 #include <WiFiManager.h>  //https://github.com/tzapu/WiFiManager
 #include <LittleFS.h>
@@ -34,10 +34,10 @@ Button2 resetWifiBt;
 
 //----------------- WiFi Manager --------------//
 // default custom static IP
-char static_ip[16]  = "192.168.0.191";
-char static_gw[16]  = "192.168.0.1";
-char static_sn[16]  = "255.255.255.0";
-char static_dns[16] = "1.1.1.1";
+// char static_ip[16]  = "192.168.0.191";
+// char static_gw[16]  = "192.168.0.1";
+// char static_sn[16]  = "255.255.255.0";
+// char static_dns[16] = "1.1.1.1";
 // MQTT parameters
 char mqttBroker[16] = "192.168.0.10";
 char mqttPort[6]    = "1883";
@@ -47,11 +47,6 @@ char mqttPass[10];
 bool shouldSaveConfig = false;
 
 WiFiManager wifiManager;
-
-WiFiManagerParameter customMqttBroker("broker", "mqtt server", mqttBroker, 16);
-WiFiManagerParameter customMqttPort("port", "mqtt port", mqttPort, 6);
-WiFiManagerParameter customMqttUser("user", "mqtt user", mqttUser, 10);
-WiFiManagerParameter customMqttPass("pass", "mqtt pass", mqttPass, 10);
 
 //----------------- MQTT ----------------------//
 WiFiClient   espClient;
@@ -90,22 +85,17 @@ void loadConfiguration(fs::FS& fs, const char* filename) {
     strlcpy(mqttPass, doc["mqttPass"], sizeof(mqttPass));
     mqttParameter = doc["mqttParameter"];
 
-    if (doc["ip"]) {
-        strlcpy(static_ip, doc["ip"], sizeof(static_ip));
-        strlcpy(static_gw, doc["gateway"], sizeof(static_gw));
-        strlcpy(static_sn, doc["subnet"], sizeof(static_sn));
-        strlcpy(static_dns, doc["dns"], sizeof(static_dns));
+    // if (doc["ip"]) {
+    //     strlcpy(static_ip, doc["ip"], sizeof(static_ip));
+    //     strlcpy(static_gw, doc["gateway"], sizeof(static_gw));
+    //     strlcpy(static_sn, doc["subnet"], sizeof(static_sn));
+    //     strlcpy(static_dns, doc["dns"], sizeof(static_dns));
 
-    } else {
-        _delnF("No custom IP in config file");
-    }
+    // } else {
+    //     _delnF("No custom IP in config file");
+    // }
 
     file.close();
-
-    _deVar("mqttBroker: ", mqttBroker);
-    _deVar(" | mqttPort: ", mqttPort);
-    _deVar(" | mqttUser: ", mqttUser);
-    _deVarln(" | mqttPass: ", mqttPass);
 }
 
 void handleMqttMessage(char* topic, byte* payload, unsigned int length) {
@@ -140,30 +130,28 @@ void saveConfigCallback() {
     shouldSaveConfig = true;
 }
 
-// void printFile(fs::FS& fs, const char* filename) {
-//     _delnF("Print config file...");
-//     File file = fs.open(filename, "r");
-//     if (!file) {
-//         _delnF("Failed to open data file");
-//         return;
-//     }
+void printFile(fs::FS& fs, const char* filename) {
+    _delnF("Print config file...");
+    File file = fs.open(filename, "r");
+    if (!file) {
+        _delnF("Failed to open data file");
+        return;
+    }
 
-//     JsonDocument         doc;
-//     DeserializationError error = deserializeJson(doc, file);
-//     if (error) {
-//         _delnF("Failed to read file");
-//     }
+    JsonDocument         doc;
+    DeserializationError error = deserializeJson(doc, file);
+    if (error) {
+        _delnF("Failed to read file");
+    }
 
-//     char buffer[512];
-//     serializeJsonPretty(doc, buffer);
-//     _delnF(buffer);
+    char buffer[512];
+    serializeJsonPretty(doc, buffer);
+    _delnF(buffer);
 
-//     file.close();  // Close the file
-// }
+    file.close();  // Close the file
+}
 
 void deleteFile(fs::FS& fs, const char* path) {
-    // _deF("Deleting file: ");
-    // _deln(String(path) + "\r\n");
     _deVarln("Deleating file: ", path);
 
     if (fs.remove(path)) {
@@ -175,23 +163,24 @@ void deleteFile(fs::FS& fs, const char* path) {
 
 void wifiManagerSetup() {
     loadConfiguration(LittleFS, filename);
-// #ifdef _DEBUG_
-//     printFile(LittleFS, filename);
-// #endif
-    _deVar("mqttBroker: ", mqttBroker);
-    _deVar(" | mqttPort: ", mqttPort);
-    _deVar(" | mqttUser: ", mqttUser);
-    _deVarln(" | mqttPass: ", mqttPass);
+#ifdef _DEBUG_
+    printFile(LittleFS, filename);
+#endif
+
+    WiFiManagerParameter customMqttBroker("broker", "mqtt server", mqttBroker, 16);
+    WiFiManagerParameter customMqttPort("port", "mqtt port", mqttPort, 6);
+    WiFiManagerParameter customMqttUser("user", "mqtt user", mqttUser, 10);
+    WiFiManagerParameter customMqttPass("pass", "mqtt pass", mqttPass, 10);
 
     wifiManager.setSaveConfigCallback(saveConfigCallback);
 
     // set static ip
-    IPAddress _ip, _gw, _sn, _dns;
-    _ip.fromString(static_ip);
-    _gw.fromString(static_gw);
-    _sn.fromString(static_sn);
-    _dns.fromString(static_dns);
-    wifiManager.setSTAStaticIPConfig(_ip, _gw, _sn, _dns);
+    // IPAddress _ip, _gw, _sn, _dns;
+    // _ip.fromString(static_ip);
+    // _gw.fromString(static_gw);
+    // _sn.fromString(static_sn);
+    // _dns.fromString(static_dns);
+    // wifiManager.setSTAStaticIPConfig(_ip, _gw, _sn, _dns);
     // add all your parameters here
     wifiManager.addParameter(&customMqttBroker);
     wifiManager.addParameter(&customMqttPort);
@@ -201,7 +190,7 @@ void wifiManagerSetup() {
     // reset settings - for testing
     // wifiManager.resetSettings();
     wifiManager.setDarkMode(true);
-    wifiManager.setDebugOutput(true, WM_DEBUG_DEV);
+    // wifiManager.setDebugOutput(true, WM_DEBUG_DEV);
     // wifiManager.setMinimumSignalQuality(20); // Default 8%
     // wifiManager.setConfigPortalTimeout(60);
 
@@ -216,6 +205,8 @@ void wifiManagerSetup() {
     strcpy(mqttPort, customMqttPort.getValue());
     strcpy(mqttUser, customMqttUser.getValue());
     strcpy(mqttPass, customMqttPass.getValue());
+
+    // printMqttParameters();
 
     // save the custom parameters to FS
     if (shouldSaveConfig) {
@@ -238,10 +229,10 @@ void wifiManagerSetup() {
             mqttParameter        = doc["mqttParameter"];
         }
 
-        doc["ip"]      = WiFi.localIP().toString();
-        doc["gateway"] = WiFi.gatewayIP().toString();
-        doc["subnet"]  = WiFi.subnetMask().toString();
-        doc["dns"]     = WiFi.dnsIP().toString();
+        // doc["ip"]      = WiFi.localIP().toString();
+        // doc["gateway"] = WiFi.gatewayIP().toString();
+        // doc["subnet"]  = WiFi.subnetMask().toString();
+        // doc["dns"]     = WiFi.dnsIP().toString();
 
         // Serialize JSON to file
         if (serializeJson(doc, file) == 0) {
@@ -273,13 +264,11 @@ void publishMqtt() {
 //----------------- Connect MQTT --------------//
 void reconnectMqtt() {
     if (WiFi.status() == WL_CONNECTED) {
+        _deVar("MQTT Broker: ", mqttBroker);
+        _deVar(" | Port: ", mqttPort);
+        _deVar(" | User: ", mqttUser);
+        _deVarln(" | Pass: ", mqttPass);
         _deF("Connecting MQTT... ");
-        // _deVar("mqttUser: ", mqttUser);
-        // _deVarln(" | mqttPass: ", mqttPass);
-        _deVar("mqttBroker: ", mqttBroker);
-        _deVar(" | mqttPort: ", mqttPort);
-        _deVar(" | mqttUser: ", mqttUser);
-        _deVarln(" | mqttPass: ", mqttPass);
         if (mqtt.connect(deviceName, mqttUser, mqttPass)) {
             tReconnectMqtt.stop();
             _delnF("Connected");
@@ -319,7 +308,7 @@ void resetWifiBtPressed(Button2& btn) {
     _delnF("Deleting the config file and resetting WiFi.");
     deleteFile(LittleFS, filename);
     wifiManager.resetSettings();
-    _deF(deviceName);  //
+    _deF(deviceName);
     _delnF(" is restarting.");
     delay(3000);
     ESP.restart();
@@ -339,8 +328,6 @@ void setup() {
 
     wifiManagerSetup();
     mqttInit();
-
-    statusLed.blinkNumberOfTimes(200, 200, 3);
 }
 
 void loop() {
