@@ -6,15 +6,18 @@ Importance: the printFile() may be couseing the statusLed not working when comme
 #include <WiFiManager.h>  //https://github.com/tzapu/WiFiManager
 #include <LittleFS.h>
 #include <ArduinoJson.h>  //https://github.com/bblanchon/ArduinoJson
+// #include <PubSubClient.h>
+#include <Button2.h>
 #include <ezLED.h>
-
-#define _DEBUG_
-#include "Debug.h"
+// #include <TickTwo.h>
 
 //******************************** Configulation ****************************//
-#define FORMAT_LITTLEFS_IF_FAILED true
+// #define _DEBUG_
+#include "Debug.h"
 
 //******************************** Variables & Objects **********************//
+#define FORMAT_LITTLEFS_IF_FAILED true
+
 #define deviceName "MyESP32"
 
 const char* filename = "/config.txt";  // Config file name
@@ -24,6 +27,10 @@ bool mqttParameter;
 //----------------- esLED ---------------------//
 #define led LED_BUILTIN
 ezLED statusLed(led);
+
+//----------------- Reset WiFi Button ---------//
+#define resetWifiBtPin 0
+Button2 resetWifiBt;
 
 //----------------- WiFi Manager --------------//
 // default custom static IP
@@ -45,6 +52,10 @@ WiFiManagerParameter customMqttBroker("broker", "mqtt server", mqttBroker, 16);
 WiFiManagerParameter customMqttPort("port", "mqtt port", mqttPort, 6);
 WiFiManagerParameter customMqttUser("user", "mqtt user", mqttUser, 10);
 WiFiManagerParameter customMqttPass("pass", "mqtt pass", mqttPass, 10);
+
+//----------------- MQTT ----------------------//
+// WiFiClient   espClient;
+// PubSubClient mqtt(espClient);
 
 //******************************** Functions ********************************//
 //----------------- LittleFS ------------------//
@@ -99,7 +110,7 @@ void printFile(fs::FS& fs, const char* filename) {
         return;
     }
 
-    JsonDocument doc;
+    JsonDocument         doc;
     DeserializationError error = deserializeJson(doc, file);
     if (error) {
         _delnF("Failed to read file");
@@ -112,9 +123,23 @@ void printFile(fs::FS& fs, const char* filename) {
     file.close();  // Close the file
 }
 
+void deleteFile(fs::FS& fs, const char* path) {
+    // _deF("Deleting file: ");
+    // _deln(String(path) + "\r\n");
+    _deVarln("Deleating file: ", path);
+
+    if (fs.remove(path)) {
+        _delnF("- file deleted");
+    } else {
+        _delnF("- delete failed");
+    }
+}
+
 void wifiManagerSetup() {
     loadConfiguration(LittleFS, filename);
+#ifdef _DEBUG_
     printFile(LittleFS, filename);
+#endif
 
     wifiManager.setSaveConfigCallback(saveConfigCallback);
 
@@ -136,15 +161,7 @@ void wifiManagerSetup() {
     wifiManager.setDarkMode(true);
     // wifiManager.setMinimumSignalQuality(20); // Default 8%
     // wifiManager.setConfigPortalTimeout(60);
-    // wifiManager.setConfigPortalBlocking(false);
-    // wifiManager.setTimeout(120);
 
-    // if (!wifiManager.autoConnect(deviceName, "password")) {
-    //     _delnF("failed to connect and hit timeout");
-    //     delay(3000);
-    //     ESP.restart();
-    // }
-    // _delnF("WiFI is connected :D");
     if (wifiManager.autoConnect(deviceName, "password")) {
         _delnF("WiFI is connected :D");
     } else {
@@ -200,8 +217,24 @@ void wifiManagerSetup() {
     _deVarln(" | dns: ", WiFi.dnsIP());
 }
 
+// ----------------- Reset WiFi Button ---------//
+void resetWifiBtPressed(Button2& btn) {
+    statusLed.turnON();                                     
+    _delnF("Deleting the config file and resetting WiFi.");  
+    deleteFile(LittleFS, filename);
+    wifiManager.resetSettings();
+    _deF(deviceName);  //
+    _delnF(" is restarting.");
+    delay(3000);
+    ESP.restart();
+}
+
 void setup() {
     _serialBegin(115200);
+    statusLed.turnOFF();
+    resetWifiBt.begin(resetWifiBtPin);
+    resetWifiBt.setLongClickTime(5000);
+    resetWifiBt.setLongClickDetectedHandler(resetWifiBtPressed);
 
     while (!LittleFS.begin(FORMAT_LITTLEFS_IF_FAILED)) {
         _delnF("Failed to initialize LittleFS library");
@@ -215,4 +248,5 @@ void setup() {
 
 void loop() {
     statusLed.loop();
+    resetWifiBt.loop();    
 }
