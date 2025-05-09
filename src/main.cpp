@@ -1,10 +1,14 @@
+/*
+Importance: the printFile() may be couseing the statusLed not working when commend #define _DEBUG_.
+*/
+
 #include <FS.h>           //this needs to be first, or it all crashes and burns...
 #include <WiFiManager.h>  //https://github.com/tzapu/WiFiManager
 #include <LittleFS.h>
 #include <ArduinoJson.h>  //https://github.com/bblanchon/ArduinoJson
 #include <ezLED.h>
 
-// #define _DEBUG_
+#define _DEBUG_
 #include "Debug.h"
 
 //******************************** Configulation ****************************//
@@ -74,6 +78,7 @@ void loadConfiguration(fs::FS& fs, const char* filename) {
         strlcpy(static_gw, doc["gateway"], sizeof(static_gw));
         strlcpy(static_sn, doc["subnet"], sizeof(static_sn));
         strlcpy(static_dns, doc["dns"], sizeof(static_dns));
+
     } else {
         _delnF("No custom IP in config file");
     }
@@ -88,119 +93,27 @@ void saveConfigCallback() {
 
 void printFile(fs::FS& fs, const char* filename) {
     _delnF("Print config file...");
-    // Open file for reading
     File file = fs.open(filename, "r");
     if (!file) {
         _delnF("Failed to open data file");
         return;
     }
 
-    // Extract each characters by one by one
-    while (file.available()) {
-        _de((char)file.read());
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, file);
+    if (error) {
+        _delnF("Failed to read file");
     }
-    _deln();
+
+    char buffer[512];
+    serializeJsonPretty(doc, buffer);
+    _delnF(buffer);
 
     file.close();  // Close the file
 }
 
-// void wifiManagerSetup() {
-    // loadConfiguration(LittleFS, filename); 
-    // printFile(LittleFS, filename);
-
-    // wifiManager.setSaveConfigCallback(saveConfigCallback);
-
-    // // set static ip
-    // IPAddress _ip, _gw, _sn, _dns;
-    // _ip.fromString(static_ip);
-    // _gw.fromString(static_gw);
-    // _sn.fromString(static_sn);
-    // _dns.fromString(static_dns);
-    // wifiManager.setSTAStaticIPConfig(_ip, _gw, _sn, _dns);
-    // // add all your parameters here
-    // wifiManager.addParameter(&customMqttBroker);
-    // wifiManager.addParameter(&customMqttPort);
-    // wifiManager.addParameter(&customMqttUser);
-    // wifiManager.addParameter(&customMqttPass);
-
-    // // reset settings - for testing
-    // // wifiManager.resetSettings();
-    // wifiManager.setDarkMode(true);
-    // // wifiManager.setMinimumSignalQuality(20); // Default 8%
-    // // wifiManager.setConfigPortalTimeout(60);
-    // // wifiManager.setConfigPortalBlocking(false);
-    // // wifiManager.setTimeout(120);
-
-    // // if (!wifiManager.autoConnect(deviceName, "password")) {
-    // //     _delnF("failed to connect and hit timeout");
-    // //     delay(3000);
-    // //     ESP.restart();
-    // // }
-    // // _delnF("WiFI is connected :D");
-    // if (wifiManager.autoConnect(deviceName, "password")) {
-    //     _delnF("WiFI is connected :D");
-    // } else {
-    //     _delnF("Configportal running");
-    // }
-
-    // // read updated parameters
-    // strcpy(mqttBroker, customMqttBroker.getValue());
-    // strcpy(mqttPort, customMqttPort.getValue());
-    // strcpy(mqttUser, customMqttUser.getValue());
-    // strcpy(mqttPass, customMqttPass.getValue());
-
-    // // save the custom parameters to FS
-    // if (shouldSaveConfig) {
-    //     File file = LittleFS.open(filename, "w");
-    //     if (!file) {
-    //         _delnF("Failed to open config file for writing");
-    //         return;
-    //     }
-
-    //     // Allocate a temporary JsonDocument
-    //     JsonDocument doc;
-    //     // Set the values in the document
-    //     doc["mqttBroker"] = mqttBroker;
-    //     doc["mqttPort"]   = mqttPort;
-    //     doc["mqttUser"]   = mqttUser;
-    //     doc["mqttPass"]   = mqttPass;
-
-    //     doc["ip"]      = WiFi.localIP().toString();
-    //     doc["gateway"] = WiFi.gatewayIP().toString();
-    //     doc["subnet"]  = WiFi.subnetMask().toString();
-    //     doc["dns"]     = WiFi.dnsIP().toString();
-
-    //     if (doc["mqttBroker"] != "") {
-    //         doc["mqttParameter"] = true;
-    //         mqttParameter        = doc["mqttParameter"];
-    //     }
-
-    //     // Serialize JSON to file
-    //     if (serializeJson(doc, file) == 0) {
-    //         _delnF("Failed to write to file");
-    //     } else {
-    //         _deVarln("The configuration has been saved to ", filename);
-    //     }
-
-    //     file.close();  // Close the file
-    //     // end save
-    // }
-
-    // _deVar("ip: ", WiFi.localIP());
-    // _deVar(" | gw: ", WiFi.gatewayIP());
-    // _deVar(" | sn: ", WiFi.subnetMask());
-    // _deVarln(" | dns: ", WiFi.dnsIP());
-// }
-
-void setup() {
-    _serialBegin(115200);
-
-    while (!LittleFS.begin(FORMAT_LITTLEFS_IF_FAILED)) {
-        _delnF("Failed to initialize LittleFS library");
-        delay(1000);
-    }
-
-    loadConfiguration(LittleFS, filename); 
+void wifiManagerSetup() {
+    loadConfiguration(LittleFS, filename);
     printFile(LittleFS, filename);
 
     wifiManager.setSaveConfigCallback(saveConfigCallback);
@@ -226,17 +139,17 @@ void setup() {
     // wifiManager.setConfigPortalBlocking(false);
     // wifiManager.setTimeout(120);
 
-    if (!wifiManager.autoConnect(deviceName, "password")) {
-        _delnF("failed to connect and hit timeout");
-        delay(3000);
-        ESP.restart();
-    }
-    _delnF("WiFI is connected :D");
-    // if (wifiManager.autoConnect(deviceName, "password")) {
-    //     _delnF("WiFI is connected :D");
-    // } else {
-    //     _delnF("Configportal running");
+    // if (!wifiManager.autoConnect(deviceName, "password")) {
+    //     _delnF("failed to connect and hit timeout");
+    //     delay(3000);
+    //     ESP.restart();
     // }
+    // _delnF("WiFI is connected :D");
+    if (wifiManager.autoConnect(deviceName, "password")) {
+        _delnF("WiFI is connected :D");
+    } else {
+        _delnF("Configportal running");
+    }
 
     // read updated parameters
     strcpy(mqttBroker, customMqttBroker.getValue());
@@ -285,8 +198,17 @@ void setup() {
     _deVar(" | gw: ", WiFi.gatewayIP());
     _deVar(" | sn: ", WiFi.subnetMask());
     _deVarln(" | dns: ", WiFi.dnsIP());
+}
 
-    // wifiManagerSetup();
+void setup() {
+    _serialBegin(115200);
+
+    while (!LittleFS.begin(FORMAT_LITTLEFS_IF_FAILED)) {
+        _delnF("Failed to initialize LittleFS library");
+        delay(1000);
+    }
+
+    wifiManagerSetup();
 
     statusLed.blinkNumberOfTimes(200, 200, 3);
 }
