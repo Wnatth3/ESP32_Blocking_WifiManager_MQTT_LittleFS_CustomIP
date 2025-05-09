@@ -12,7 +12,7 @@ Importance: the printFile() may be couseing the statusLed not working when comme
 #include <TickTwo.h>
 
 //******************************** Configulation ****************************//
-#define _DEBUG_
+// #define _DEBUG_ // Comment this line if you don't want to debug
 #include "Debug.h"
 
 //******************************** Variables & Objects **********************//
