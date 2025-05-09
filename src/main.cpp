@@ -6,13 +6,13 @@ Importance: the printFile() may be couseing the statusLed not working when comme
 #include <WiFiManager.h>  //https://github.com/tzapu/WiFiManager
 #include <LittleFS.h>
 #include <ArduinoJson.h>  //https://github.com/bblanchon/ArduinoJson
-// #include <PubSubClient.h>
+#include <PubSubClient.h>
 #include <Button2.h>
 #include <ezLED.h>
-// #include <TickTwo.h>
+#include <TickTwo.h>
 
 //******************************** Configulation ****************************//
-// #define _DEBUG_
+#define _DEBUG_
 #include "Debug.h"
 
 //******************************** Variables & Objects **********************//
@@ -54,8 +54,14 @@ WiFiManagerParameter customMqttUser("user", "mqtt user", mqttUser, 10);
 WiFiManagerParameter customMqttPass("pass", "mqtt pass", mqttPass, 10);
 
 //----------------- MQTT ----------------------//
-// WiFiClient   espClient;
-// PubSubClient mqtt(espClient);
+WiFiClient   espClient;
+PubSubClient mqtt(espClient);
+
+//******************************** Tasks ************************************//
+void    connectMqtt();
+void    reconnectMqtt();
+TickTwo tConnectMqtt(connectMqtt, 0, 0, MILLIS);  // (function, interval, iteration, interval unit)
+TickTwo tReconnectMqtt(reconnectMqtt, 3000, 0, MILLIS);
 
 //******************************** Functions ********************************//
 //----------------- LittleFS ------------------//
@@ -95,6 +101,38 @@ void loadConfiguration(fs::FS& fs, const char* filename) {
     }
 
     file.close();
+
+    _deVar("mqttBroker: ", mqttBroker);
+    _deVar(" | mqttPort: ", mqttPort);
+    _deVar(" | mqttUser: ", mqttUser);
+    _deVarln(" | mqttPass: ", mqttPass);
+}
+
+void handleMqttMessage(char* topic, byte* payload, unsigned int length) {
+    String message;
+    for (int i = 0; i < length; i++) {
+        message += (char)payload[i];
+    }
+
+    if (String(topic) == "test/subscribe/topic") {
+        if (message == "aValue") {
+            // Do something
+        } else if (message == "otherValue") {
+            // Do something
+        }
+    }
+}
+
+void mqttInit() {
+    _deF("MQTT parameters are ");
+    if (mqttParameter) {
+        _delnF(" available");
+        mqtt.setCallback(handleMqttMessage);
+        mqtt.setServer(mqttBroker, atoi(mqttPort));
+        tConnectMqtt.start();
+    } else {
+        _delnF(" not available.");
+    }
 }
 
 void saveConfigCallback() {
@@ -102,26 +140,26 @@ void saveConfigCallback() {
     shouldSaveConfig = true;
 }
 
-void printFile(fs::FS& fs, const char* filename) {
-    _delnF("Print config file...");
-    File file = fs.open(filename, "r");
-    if (!file) {
-        _delnF("Failed to open data file");
-        return;
-    }
+// void printFile(fs::FS& fs, const char* filename) {
+//     _delnF("Print config file...");
+//     File file = fs.open(filename, "r");
+//     if (!file) {
+//         _delnF("Failed to open data file");
+//         return;
+//     }
 
-    JsonDocument         doc;
-    DeserializationError error = deserializeJson(doc, file);
-    if (error) {
-        _delnF("Failed to read file");
-    }
+//     JsonDocument         doc;
+//     DeserializationError error = deserializeJson(doc, file);
+//     if (error) {
+//         _delnF("Failed to read file");
+//     }
 
-    char buffer[512];
-    serializeJsonPretty(doc, buffer);
-    _delnF(buffer);
+//     char buffer[512];
+//     serializeJsonPretty(doc, buffer);
+//     _delnF(buffer);
 
-    file.close();  // Close the file
-}
+//     file.close();  // Close the file
+// }
 
 void deleteFile(fs::FS& fs, const char* path) {
     // _deF("Deleting file: ");
@@ -137,9 +175,13 @@ void deleteFile(fs::FS& fs, const char* path) {
 
 void wifiManagerSetup() {
     loadConfiguration(LittleFS, filename);
-#ifdef _DEBUG_
-    printFile(LittleFS, filename);
-#endif
+// #ifdef _DEBUG_
+//     printFile(LittleFS, filename);
+// #endif
+    _deVar("mqttBroker: ", mqttBroker);
+    _deVar(" | mqttPort: ", mqttPort);
+    _deVar(" | mqttUser: ", mqttUser);
+    _deVarln(" | mqttPass: ", mqttPass);
 
     wifiManager.setSaveConfigCallback(saveConfigCallback);
 
@@ -159,6 +201,7 @@ void wifiManagerSetup() {
     // reset settings - for testing
     // wifiManager.resetSettings();
     wifiManager.setDarkMode(true);
+    wifiManager.setDebugOutput(true, WM_DEBUG_DEV);
     // wifiManager.setMinimumSignalQuality(20); // Default 8%
     // wifiManager.setConfigPortalTimeout(60);
 
@@ -190,15 +233,15 @@ void wifiManagerSetup() {
         doc["mqttUser"]   = mqttUser;
         doc["mqttPass"]   = mqttPass;
 
-        doc["ip"]      = WiFi.localIP().toString();
-        doc["gateway"] = WiFi.gatewayIP().toString();
-        doc["subnet"]  = WiFi.subnetMask().toString();
-        doc["dns"]     = WiFi.dnsIP().toString();
-
         if (doc["mqttBroker"] != "") {
             doc["mqttParameter"] = true;
             mqttParameter        = doc["mqttParameter"];
         }
+
+        doc["ip"]      = WiFi.localIP().toString();
+        doc["gateway"] = WiFi.gatewayIP().toString();
+        doc["subnet"]  = WiFi.subnetMask().toString();
+        doc["dns"]     = WiFi.dnsIP().toString();
 
         // Serialize JSON to file
         if (serializeJson(doc, file) == 0) {
@@ -217,10 +260,63 @@ void wifiManagerSetup() {
     _deVarln(" | dns: ", WiFi.dnsIP());
 }
 
+void subscribeMqtt() {
+    _delnF("Subscribing to the MQTT topics...");
+    // mqtt.subscribe("test/subscribe/topic");
+}
+
+void publishMqtt() {
+    _delnF("Publishing to the MQTT topics...");
+    // mqtt.publish("test/publish/topic", "Hello World!");
+}
+
+//----------------- Connect MQTT --------------//
+void reconnectMqtt() {
+    if (WiFi.status() == WL_CONNECTED) {
+        _deF("Connecting MQTT... ");
+        // _deVar("mqttUser: ", mqttUser);
+        // _deVarln(" | mqttPass: ", mqttPass);
+        _deVar("mqttBroker: ", mqttBroker);
+        _deVar(" | mqttPort: ", mqttPort);
+        _deVar(" | mqttUser: ", mqttUser);
+        _deVarln(" | mqttPass: ", mqttPass);
+        if (mqtt.connect(deviceName, mqttUser, mqttPass)) {
+            tReconnectMqtt.stop();
+            _delnF("Connected");
+            tConnectMqtt.interval(0);
+            tConnectMqtt.start();
+            statusLed.blinkNumberOfTimes(200, 200, 3);  // 250ms ON, 750ms OFF, repeat 3 times, blink immediately
+            subscribeMqtt();
+            publishMqtt();
+        } else {
+            _deVar("failed state: ", mqtt.state());
+            _deVarln(" | counter: ", tReconnectMqtt.counter());
+            if (tReconnectMqtt.counter() >= 3) {
+                tReconnectMqtt.stop();
+                tConnectMqtt.interval(60 * 1000);  // Wait 1 minute before reconnecting.
+                tConnectMqtt.start();
+            }
+        }
+    } else {
+        if (tReconnectMqtt.counter() <= 1) {
+            _delnF("WiFi is not connected");
+        }
+    }
+}
+
+void connectMqtt() {
+    if (!mqtt.connected()) {
+        tConnectMqtt.stop();
+        tReconnectMqtt.start();
+    } else {
+        mqtt.loop();
+    }
+}
+
 // ----------------- Reset WiFi Button ---------//
 void resetWifiBtPressed(Button2& btn) {
-    statusLed.turnON();                                     
-    _delnF("Deleting the config file and resetting WiFi.");  
+    statusLed.turnON();
+    _delnF("Deleting the config file and resetting WiFi.");
     deleteFile(LittleFS, filename);
     wifiManager.resetSettings();
     _deF(deviceName);  //
@@ -242,11 +338,14 @@ void setup() {
     }
 
     wifiManagerSetup();
+    mqttInit();
 
     statusLed.blinkNumberOfTimes(200, 200, 3);
 }
 
 void loop() {
     statusLed.loop();
-    resetWifiBt.loop();    
+    resetWifiBt.loop();
+    tConnectMqtt.update();
+    tReconnectMqtt.update();
 }
