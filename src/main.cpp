@@ -35,6 +35,13 @@ char mqttPass[10];
 
 bool shouldSaveConfig = false;
 
+WiFiManager wifiManager;
+
+WiFiManagerParameter customMqttBroker("broker", "mqtt server", mqttBroker, 16);
+WiFiManagerParameter customMqttPort("port", "mqtt port", mqttPort, 6);
+WiFiManagerParameter customMqttUser("user", "mqtt user", mqttUser, 10);
+WiFiManagerParameter customMqttPass("pass", "mqtt pass", mqttPass, 10);
+
 //******************************** Functions ********************************//
 //----------------- LittleFS ------------------//
 // Loads the configuration from a file
@@ -93,13 +100,6 @@ void setup() {
     _deVar(" | gw: ", static_gw);
     _deVar(" | sn: ", static_sn);
     _deVarln(" | dns: ", static_dns);
-
-    WiFiManagerParameter customMqttBroker("broker", "mqtt server", mqttBroker, 16);
-    WiFiManagerParameter customMqttPort("port", "mqtt port", mqttPort, 6);
-    WiFiManagerParameter customMqttUser("user", "mqtt user", mqttUser, 10);
-    WiFiManagerParameter customMqttPass("pass", "mqtt pass", mqttPass, 10);
-
-    WiFiManager wifiManager;
 
     wifiManager.setSaveConfigCallback(saveConfigCallback);
 
