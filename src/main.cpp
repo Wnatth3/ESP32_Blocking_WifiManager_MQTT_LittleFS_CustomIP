@@ -4,22 +4,23 @@ Issue: The status LED is not blinking when comment #define _DEBUG_ line.
 
 
 #include <Arduino.h>
-#include <LittleFS.h>
 #include <FS.h>
 #include <WiFiManager.h>  // https://github.com/tzapu/WiFiManager
+#include <LittleFS.h>
 #include <ArduinoJson.h>
 // #include <PubSubClient.h>
 // #include <Button2.h>
 #include <ezLED.h>
 // #include <TickTwo.h>
 
+//******************************** Configulation ****************************//
 // #define _DEBUG_
 #include "Debug.h"  // Debug library
 
-//******************************** Configulation ****************************//
-#define FORMAT_LITTLEFS_IF_FAILED true
 
 //******************************** Variables & Objects **********************//
+#define FORMAT_LITTLEFS_IF_FAILED true
+
 #define deviceName "MyESP32"
 
 const char* filename = "/config.txt";  // Config file name
@@ -195,11 +196,9 @@ void wifiManagerSetup() {
     // wifiManager.setConfigPortalBlocking(false);
 
     _delnF("Saving configuration...");
-
     wifiManager.setSaveParamsCallback(saveConfigCallback);
 
     _delnF("Print config file...");
-
     printFile(LittleFS, filename);
 
     if (wifiManager.autoConnect(deviceName, "password")) {
@@ -258,8 +257,7 @@ void wifiManagerSetup() {
         if (serializeJson(doc, file) == 0) {
             _delnF("Failed to write to file");
         } else {
-            _deF("The configuration has been saved to ");
-            _deln(filename);
+            _deVarln("The configuration has been saved to ", filename);
         }
 
         file.close();  // Close the file
@@ -270,13 +268,11 @@ void wifiManagerSetup() {
 
 void subscribeMqtt() {
     _delnF("Subscribing to the MQTT topics...");
-
     // mqtt.subscribe("test/subscribe/topic");
 }
 
 void publishMqtt() {
     _delnF("Publishing to the MQTT topics...");
-
     // mqtt.publish("test/publish/topic", "Hello World!");
 }
 
@@ -341,11 +337,10 @@ void setup() {
     // resetWifiBt.setLongClickDetectedHandler(resetWifiBtPressed);
     while (!LittleFS.begin(FORMAT_LITTLEFS_IF_FAILED)) {
         _delnF("Failed to initialize LittleFS library");
-
         delay(1000);
     }
 
-    wifiManagerSetup();
+    // wifiManagerSetup();
 
     // mqttInit();
     statusLed.blinkNumberOfTimes(200, 300, 3);  // 250ms ON, 750ms OFF, repeat 3 times, blink immediately
