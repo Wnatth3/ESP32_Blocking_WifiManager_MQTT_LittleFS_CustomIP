@@ -2,7 +2,6 @@
 Issue: The status LED is not blinking when comment #define _DEBUG_ line.
 */
 
-
 #include <Arduino.h>
 #include <LittleFS.h>
 #include <FS.h>
@@ -160,8 +159,6 @@ void printFile(fs::FS& fs, const char* filename) {
 }
 
 void deleteFile(fs::FS& fs, const char* path) {
-    // _deF("Deleting file: ");
-    // _deln(String(path) + "\r\n");
     _deVarln("Deleating file: ", path);
 
     if (fs.remove(path)) {
@@ -175,6 +172,8 @@ void deleteFile(fs::FS& fs, const char* path) {
 void wifiManagerSetup() {
     _delnF("Loading configuration...");
     loadConfiguration(LittleFS, filename);
+
+    wifiManager.setSaveParamsCallback(saveConfigCallback);
 
     // set static ip
     IPAddress _ip, _gw, _sn, _dns;
@@ -190,16 +189,14 @@ void wifiManagerSetup() {
     wifiManager.addParameter(&customMqttUser);
     wifiManager.addParameter(&customMqttPass);
 
+    // reset settings - for testing
+    // wifiManager.resetSettings();
     wifiManager.setDarkMode(true);
+    //  wifiManager.setMinimumSignalQuality();
     // wifiManager.setConfigPortalTimeout(60);
     // wifiManager.setConfigPortalBlocking(false);
 
-    _delnF("Saving configuration...");
-
-    wifiManager.setSaveParamsCallback(saveConfigCallback);
-
     _delnF("Print config file...");
-
     printFile(LittleFS, filename);
 
     if (wifiManager.autoConnect(deviceName, "password")) {
@@ -216,12 +213,12 @@ void wifiManagerSetup() {
         strcpy(mqttUser, customMqttUser.getValue());
         strcpy(mqttPass, customMqttPass.getValue());
 
+        _delnF("The values are updated.");
+
         // _deVar("ip: ", WiFi.localIP());
         // _deVar(" | gw: ", WiFi.gatewayIP());
         // _deVar(" | sn: ", WiFi.subnetMask());
         // _deVarln(" | dns: ", WiFi.dnsIP());
-
-        _delnF("The values are updated.");
 
         // Delete existing file, otherwise the configuration is appended to the file
         // LittleFS.remove(filename);
@@ -249,20 +246,19 @@ void wifiManagerSetup() {
             mqttParameter        = doc["mqttParameter"];
         }
 
-        // _deVar("ip: ", WiFi.localIP());
-        // _deVar(" | gw: ", WiFi.gatewayIP());
-        // _deVar(" | sn: ", WiFi.subnetMask());
-        // _deVarln(" | dns: ", WiFi.dnsIP());
-
         // Serialize JSON to file
         if (serializeJson(doc, file) == 0) {
             _delnF("Failed to write to file");
         } else {
-            _deF("The configuration has been saved to ");
-            _deln(filename);
+            _deVarln("The configuration has been saved to ", filename);
         }
 
         file.close();  // Close the file
+
+        _deVar("ip: ", WiFi.localIP());
+        _deVar(" | gw: ", WiFi.gatewayIP());
+        _deVar(" | sn: ", WiFi.subnetMask());
+        _deVarln(" | dns: ", WiFi.dnsIP());
 
         // mqttInit();
     }
@@ -339,16 +335,16 @@ void setup() {
     // resetWifiBt.begin(resetWifiBtPin);
     // resetWifiBt.setLongClickTime(5000);
     // resetWifiBt.setLongClickDetectedHandler(resetWifiBtPressed);
+
     while (!LittleFS.begin(FORMAT_LITTLEFS_IF_FAILED)) {
         _delnF("Failed to initialize LittleFS library");
-
         delay(1000);
     }
 
     wifiManagerSetup();
 
     // mqttInit();
-    statusLed.blinkNumberOfTimes(200, 300, 3);  // 250ms ON, 750ms OFF, repeat 3 times, blink immediately
+    statusLed.blinkNumberOfTimes(200, 200, 3);  // 250ms ON, 750ms OFF, repeat 3 times, blink immediately
 }
 
 //********************************  Loop ************************************//
