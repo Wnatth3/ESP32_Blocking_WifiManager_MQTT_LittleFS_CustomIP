@@ -12,7 +12,7 @@ Importance: the printFile() may be couseing the statusLed not working when comme
 #include <TickTwo.h>
 
 //******************************** Configulation ****************************//
-#define _DEBUG_ // Comment this line if you don't want to debug
+#define _DEBUG_  // Comment this line if you don't want to debug
 #include "Debug.h"
 
 //******************************** Variables & Objects **********************//
@@ -165,11 +165,12 @@ void wifiManagerSetup() {
 #ifdef _DEBUG_
     printFile(LittleFS, filename);
 #endif
-
+    // Don't move this block code, it is important for the blocking WiFiManager.
     WiFiManagerParameter customMqttBroker("broker", "mqtt server", mqttBroker, 16);
     WiFiManagerParameter customMqttPort("port", "mqtt port", mqttPort, 6);
     WiFiManagerParameter customMqttUser("user", "mqtt user", mqttUser, 10);
     WiFiManagerParameter customMqttPass("pass", "mqtt pass", mqttPass, 10);
+    // end block code
 
     wifiManager.setSaveConfigCallback(saveConfigCallback);
 
@@ -189,6 +190,9 @@ void wifiManagerSetup() {
     // reset settings - for testing
     // wifiManager.resetSettings();
     wifiManager.setDarkMode(true);
+#ifndef _DEBUG_
+    wifiManager.setDebugOutput(true, WM_DEBUG_SILENT);
+#endif
     // wifiManager.setDebugOutput(true, WM_DEBUG_DEV);
     // wifiManager.setMinimumSignalQuality(20); // Default 8%
     // wifiManager.setConfigPortalTimeout(60);
@@ -204,8 +208,6 @@ void wifiManagerSetup() {
     strcpy(mqttPort, customMqttPort.getValue());
     strcpy(mqttUser, customMqttUser.getValue());
     strcpy(mqttPass, customMqttPass.getValue());
-
-    // printMqttParameters();
 
     // save the custom parameters to FS
     if (shouldSaveConfig) {
