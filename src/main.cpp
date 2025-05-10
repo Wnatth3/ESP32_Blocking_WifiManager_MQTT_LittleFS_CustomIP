@@ -194,7 +194,7 @@ void wifiManagerSetup() {
     wifiManager.setDebugOutput(true, WM_DEBUG_SILENT);
 #endif
     // wifiManager.setDebugOutput(true, WM_DEBUG_DEV);
-    // wifiManager.setMinimumSignalQuality(20); // Default 8%
+    // wifiManager.setMinimumSignalQuality(20); // Default: 8%
     // wifiManager.setConfigPortalTimeout(60);
 
     if (wifiManager.autoConnect(deviceName, "password")) {
