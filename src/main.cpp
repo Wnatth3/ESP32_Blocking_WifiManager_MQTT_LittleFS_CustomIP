@@ -15,6 +15,8 @@ Importance: the printFile() may be couseing the statusLed not working when comme
 #define _DEBUG_  // Comment this line if you don't want to debug
 #include "Debug.h"
 
+// #define CUSTOM_IP // Uncomment this line if you want to use a custom IP address
+
 //******************************** Variables & Objects **********************//
 #define FORMAT_LITTLEFS_IF_FAILED true
 
@@ -33,11 +35,13 @@ ezLED statusLed(led);
 Button2 resetWifiBt;
 
 //----------------- WiFi Manager --------------//
+#ifdef CUSTOM_IP
 // default custom static IP
 char static_ip[16]  = "192.168.0.191";
 char static_gw[16]  = "192.168.0.1";
 char static_sn[16]  = "255.255.255.0";
 char static_dns[16] = "1.1.1.1";
+#endif
 // MQTT parameters
 char mqttBroker[16] = "192.168.0.10";
 char mqttPort[6]    = "1883";
@@ -85,6 +89,7 @@ void loadConfiguration(fs::FS& fs, const char* filename) {
     strlcpy(mqttPass, doc["mqttPass"], sizeof(mqttPass));
     mqttParameter = doc["mqttParameter"];
 
+#ifdef CUSTOM_IP
     if (doc["ip"]) {
         strlcpy(static_ip, doc["ip"], sizeof(static_ip));
         strlcpy(static_gw, doc["gateway"], sizeof(static_gw));
@@ -93,6 +98,7 @@ void loadConfiguration(fs::FS& fs, const char* filename) {
     } else {
         _delnF("No custom IP in config file");
     }
+#endif
 
     file.close();
 }
@@ -173,7 +179,7 @@ void wifiManagerSetup() {
     // end block code
 
     wifiManager.setSaveConfigCallback(saveConfigCallback);
-
+#ifdef CUSTOM_IP
     // set static ip
     IPAddress _ip, _gw, _sn, _dns;
     _ip.fromString(static_ip);
@@ -181,6 +187,7 @@ void wifiManagerSetup() {
     _sn.fromString(static_sn);
     _dns.fromString(static_dns);
     wifiManager.setSTAStaticIPConfig(_ip, _gw, _sn, _dns);
+#endif
     // add all your parameters here
     wifiManager.addParameter(&customMqttBroker);
     wifiManager.addParameter(&customMqttPort);
@@ -229,12 +236,12 @@ void wifiManagerSetup() {
             doc["mqttParameter"] = true;
             mqttParameter        = doc["mqttParameter"];
         }
-
+#ifdef CUSTOM_IP
         doc["ip"]      = WiFi.localIP().toString();
         doc["gateway"] = WiFi.gatewayIP().toString();
         doc["subnet"]  = WiFi.subnetMask().toString();
         doc["dns"]     = WiFi.dnsIP().toString();
-
+#endif
         // Serialize JSON to file
         if (serializeJson(doc, file) == 0) {
             _delnF("Failed to write to file");
