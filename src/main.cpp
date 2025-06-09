@@ -1,6 +1,4 @@
-/*
-Importance: the printFile() may be couseing the statusLed not working when commend #define _DEBUG_.
-*/
+
 #include <Arduino.h>
 #include <FS.h>           //this needs to be first, or it all crashes and burns...
 #include <WiFiManager.h>  //https://github.com/tzapu/WiFiManager
