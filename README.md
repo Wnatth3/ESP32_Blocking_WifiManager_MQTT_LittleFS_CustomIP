@@ -7,7 +7,7 @@
 - Arduino IDE or PlatformIO
 - Libraries:
 - WiFiManager (https://github.com/tzapu/WiFiManager)
-- LittleFS_esp32 (for LittleFS support)
+- LittleFS
 - ArduinoJson (https://github.com/bblanchon/ArduinoJson)
 - PubSubClient (https://github.com/knolleary/pubsubclient)
 - Button2 (https://github.com/LennartHennigs/Button2)
